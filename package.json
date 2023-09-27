@@ -1,0 +1,25 @@
+{
+  "name": "auto-job",
+  "version": "1.0.0",
+  "description": "boss直聘自动打招呼油猴脚本",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c"
+  },
+  "keywords": [
+    "auto",
+    "job"
+  ],
+  "author": "hym",
+  "license": "ISC",
+  "homepage": "https://github.com/18023785187/auto-job",
+  "engines": {
+    "node": ">=18.16.0",
+    "npm": ">=9.5.0"
+  },
+  "devDependencies": {
+    "rollup": "^3.29.3"
+  }
+}

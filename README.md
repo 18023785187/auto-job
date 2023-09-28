@@ -34,3 +34,9 @@ const config = {
     message: '您好，我正在找前端开发的工作，希望有机会与贵司进一步交流', // 打招呼语
 }
 ```
+
+#### 注意
+
+使用脚本前请先关闭Boss直聘中的自动打招呼语
+
+![](https://greasyfork.s3.us-east-2.amazonaws.com/ttbfb6sarov72xkcgsty5pm4cs3e)

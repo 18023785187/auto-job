@@ -541,8 +541,9 @@ var AutoJob = (function () {
             async function toDetails() {
                 const handlers = Array.from(document.querySelectorAll('.job-list-box > li'))
                     .filter(dom => {
+                        const isfriend = dom.querySelector('.job-card-left>.job-info>.start-chat-btn');
                         const name = dom.querySelector('.job-card-right .company-name>a');
-                        return !config.excludes.some(exclude => name.innerText.includes(exclude))
+                        return isfriend.innerText === '立即沟通' && !config.excludes.some(exclude => name.innerText.includes(exclude))
                     })
                     .map(dom => {
                         return () => new Promise(resolve => {
@@ -582,7 +583,7 @@ var AutoJob = (function () {
                 return
             }
             const commentBtn = await monitorElementGeneration('.job-banner .btn-container :nth-child(2)');
-            if (commentBtn.innerText !== '立即沟通') {
+            if (commentBtn.dataset.isfriend === 'true') {
                 this._close();
                 return
             }

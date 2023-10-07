@@ -1,34 +1,67 @@
 // ==UserScript==
 // @name         boss直聘自动打招呼
-// @namespace    https://github.com/18023785187
-// @version      0.0.1
-// @description  boss直聘自动打招呼，海投神器
+// @namespace    https://github.com/18023785187/auto-job
+// @version      0.1.0
+// @description  boss直聘自动打招呼油猴脚本
 // @author       hym20000418
 // @match        *://www.zhipin.com/*
 // @icon         none
 // @grant        none
 // @license      MIT
-// ==/UserScript==   
+// ==/UserScript==
 
 /*
     修改该配置即可限定打招呼对象
-
-    搜索框和推荐不能同时执行，如果两个都配置那么只执行推荐职位
 */
 const config = {
-    // 推荐职位配置，如果值不是对象将关闭通过推荐职位打招
-    recommendConfig: {
-        city: '深圳', // 目标城市，在求职意向中设置，如果没有求职意向中没有目标城市将不会自动打招呼
-        isNew: true, // true 为最新职位，false 为精选职位
-        keyword: '前端', // 匹配职位名称，只有匹配中才会打招呼，比如推荐职位为 '后端工程师' 会跳过
-    },
-    // 搜索框配置，如果值不是对象将关闭通过搜索框搜索职位打招呼功能
-    searchConfig: {
-        city: '深圳', // 目标城市
-        keyword: '前端', // 职位关键词
-    },
-    excludeKeywords: ['高级', '资深'], // 职位名称要排除的关键字，比如 '高级前端工程师' 将会比排除在外
-    otherPlace: false, // 是否接受外地职位
+    /**
+     * 设置职位入口，可选值 0, 1, 2
+     * 0 为以 搜索框搜索 作为职位入口
+     * 1 为以 推荐职位——精选职位 作为职位入口
+     * 2 为以 推荐职位——最新职位 作为职位入口
+     * 
+     * 设置三个入口是原因三个入口的职位都不太一样，避免漏了一些职位可以尝试切换入口
+     */
+    mode: 2,
+    /**
+     * 目标城市,
+     * mode 为 1 或 2 时需要事先设置求职意向为目标城市，否则不生效
+     */
+    city: '深圳',
+    /**
+     * 职位关键词
+     * mode 为 0 时作为搜索框的关键词键入
+     * mode 为 1 或 2 时作为职位列表项中的职位名称匹配（这是因为推荐的职位不是很准确，比如偶尔会出现 “安卓工程师” 之类的职位，这时就需要通过关键词去过滤不匹配的职位）
+     */
+    keyword: '前端',
+    /**
+     * 职位名称要排除的关键字，比如 '高级前端工程师' 将会比排除在外
+     */
+    excludeKeywords: ['高级', '资深', '驻场', '外派', '安卓'],
+    /**
+     * 是否接受外地职位（职位列表有时会出现外地职位）
+     */
+    otherPlace: false,
+    /**
+     * 活跃度，匹配中的才会打招呼
+     */
+    liveness: ['在线', '刚刚活跃', '今日活跃', '3日内活跃'],
+    /**
+     * 要排除的公司名
+     */
+    excludes: ['中软国际', '德科', '睿服'],
+    /**
+     * 每次访问的最小间隔，防止操作过快被系统判定为机器人，单位秒
+     */
+    min: 3,
+    /**
+     * 每次访问的最大间隔，防止操作过快被系统判定为机器人，单位秒
+     */
+    max: 6,
+    /**
+     * 打招呼语
+     */
+    message: '您好，我正在找前端开发的工作，希望有机会与贵司进一步交流',
     /**
      * 工作年限，可多选
      * 经验不限     101
@@ -40,12 +73,40 @@ const config = {
      * 10年以上       107
      * 在校生          108
      */
-    experience: [101, 103, 104, 105], // 工作年限
-    liveness: ['在线', '刚刚活跃', '今日活跃', '3日内活跃'], // 活跃度，匹配中的才会打招呼
-    excludes: ['中软国际', '德科', '睿服'], // 要排除的公司名
-    min: 3, // 每次访问的最小间隔，防止操作过快被系统判定为机器人
-    max: 6, // 每次访问的最大间隔，防止操作过快被系统判定为机器人
-    message: '您好，我正在找前端开发的工作，希望有机会与贵司进一步交流', // 打招呼语
+    experience: [101, 103, 104, 105],
+    /**
+     * 薪资待遇，数字类型
+     * 3K 以下      402
+     * 3-5K         403
+     * 5-10K        404
+     * 10-20K       405
+     * 20-50K       406
+     * 50K以上      407
+     * 
+     * 自定义   [min, max] min表示最小值，max表示最大值，单位 K，如 salary: [13, 15] 表示 13-15K
+     */
+    salary: [],
+    /**
+     * 公司规模
+     * 0-20人       301
+     * 20-99人      302
+     * 100-499人    303
+     * 500-999人    304
+     * 1000-9999人  305
+     * 10000人以上  306
+     */
+    scale: [],
+    /**
+     * 学历要求
+     * 大专 202
+     * 本科 203
+     * 硕士 204
+     * 博士 205
+     * 高中 206
+     * 中专 208
+     * 初中 209
+     */
+    degree: [],
 }
 
 var AutoJob = (function () {
@@ -90,10 +151,6 @@ var AutoJob = (function () {
         return (
             min + (Math.random() * (max - min))
         )
-    }
-
-    function isObj(target) {
-        return Object.prototype.toString.call(target) === '[object Object]'
     }
 
     const cityCodeMap = {
@@ -479,41 +536,47 @@ var AutoJob = (function () {
         _formatConfig(config) {
             const newConfig = {};
 
+            if (![0, 1, 2].includes(config.mode)) {
+                throw new TypeError('mode 的值必须是 0, 1, 2')
+            }
+            if (typeof config.city !== 'string') {
+                throw new TypeError('city 类型必须是 string')
+            }
+            if (typeof config.keyword !== 'string') {
+                throw new TypeError('keyword 类型必须是 string')
+            }
             if (typeof config.message !== 'string') {
                 throw new TypeError('message 类型必须是 string')
             }
             if (!config.message.length) {
                 throw new TypeError('message 不能为空')
             }
-            if (isObj(config.searchConfig)) {
-                if (typeof config.searchConfig.city !== 'string') {
-                    throw new TypeError('searchConfig.city 类型必须是 string')
+            if (config.salary !== undefined) {
+                if (typeof config.salary !== 'number' && !Array.isArray(config.salary)) {
+                    throw new TypeError('salary 类型必须是 number 或 array')
                 }
-                if (typeof config.searchConfig.keyword !== 'string') {
-                    throw new TypeError('searchConfig.keyword 类型必须是 string')
+                if (
+                    Array.isArray(config.salary) &&
+                    config.salary.length &&
+                    (typeof config.salary[0] !== 'number' || typeof config.salary[1] !== 'number')
+                ) {
+                    throw new TypeError('salary 类型为数组时前两项必须是 number 类型')
                 }
-                newConfig.searchConfig = config.searchConfig;
             }
-            if (isObj(config.recommendConfig)) {
-                if (typeof config.searchConfig.keyword !== 'string') {
-                    throw new TypeError('recommendConfig.keyword 类型必须是 string')
-                }
-                if (typeof config.recommendConfig.city !== 'string') {
-                    throw new TypeError('recommendConfig.city 类型必须是 string')
-                }
-                if (typeof config.recommendConfig.isNew !== 'boolean') {
-                    throw new TypeError('recommendConfig.isNew 类型必须是 boolean')
-                }
-                newConfig.recommendConfig = config.recommendConfig;
-            }
+            newConfig.mode = config.mode;
+            newConfig.city = config.city;
+            newConfig.keyword = config.keyword;
             newConfig.otherPlace = !!config.otherPlace;
             newConfig.excludeKeywords = Array.isArray(config.excludeKeywords) ? config.excludeKeywords : [];
             newConfig.experience = Array.isArray(config.experience) ? config.experience : [];
             newConfig.liveness = Array.isArray(config.liveness) ? config.liveness : [];
             newConfig.excludes = Array.isArray(config.excludes) ? config.excludes : [];
+            newConfig.scale = Array.isArray(config.scale) ? config.scale : [];
+            newConfig.degree = Array.isArray(config.degree) ? config.degree : [];
             newConfig.min = (typeof newConfig.min === 'number' ? newConfig.min : 3) * 1000;
             newConfig.max = (typeof newConfig.max === 'number' ? newConfig.max : 6) * 1000;
             newConfig.message = config.message;
+            newConfig.salary = config.salary ?? [];
 
             return newConfig
         }
@@ -528,7 +591,7 @@ var AutoJob = (function () {
                 this._checkValidJob();
             } else if (window.location.pathname === '/web/geek/chat') { // 聊天页
                 this._sayHello();
-            } 
+            }
             else {
                 this._toJobs();
             }
@@ -542,22 +605,15 @@ var AutoJob = (function () {
         async _toJobs() {
             const { config } = this;
 
-            // 打开推荐职位
-            if (config.recommendConfig) {
-                const recommend = await monitorElementGeneration('.merge-city-job-recommend');
-                const moreBtn = recommend.querySelector('.common-tab-more > a');
-                moreBtn.click();
-            }
-
             // 选择城市并所搜职位关键词
-            else if (config.searchConfig) {
+            if (config.mode === 0) {
                 const nav = document.querySelector('.nav-city-box');
                 const selected = nav.querySelector('.nav-city-selected');
-                if (selected.innerText !== config.searchConfig.city) {
+                if (selected.innerText !== config.city) {
                     nav.click();
                     const section = await monitorElementGeneration('.city-group-section');
                     const citys = section.querySelectorAll('a');
-                    const targetCity = Array.from(citys).find(city => city.innerText === config.searchConfig.city);
+                    const targetCity = Array.from(citys).find(city => city.innerText === config.city);
                     if (window.location.pathname !== targetCity.pathname) {
                         targetCity.click();
                     }
@@ -566,9 +622,14 @@ var AutoJob = (function () {
                 // 填写职位关键词
                 const form = document.querySelector('.search-form');
                 const search = form.querySelector('.search-form-con > .ipt-wrap > input');
-                search.value = config.searchConfig.keyword;
+                search.value = config.keyword;
                 const button = form.querySelector('.btn-search');
                 button.click();
+            } else {
+                // 打开推荐职位
+                const recommend = await monitorElementGeneration('.merge-city-job-recommend');
+                const moreBtn = recommend.querySelector('.common-tab-more > a');
+                moreBtn.click();
             }
         }
 
@@ -589,9 +650,18 @@ var AutoJob = (function () {
             if (page > 10) return
 
             let isModify = false;
-            setSearchParams('city', cityCodeMap[config.searchConfig.city]);
-            setSearchParams('query', config.searchConfig.keyword);
+            setSearchParams('city', cityCodeMap[config.city]);
+            setSearchParams('query', config.keyword);
             setSearchParams('experience', config.experience);
+            setSearchParams('scale', config.scale);
+            setSearchParams('degree', config.degree);
+            if (Array.isArray(config.salary) && config.salary.length) {
+                setSearchParams('salary', -40001);
+                setSearchParams('lowSalary', config.salary[0]);
+                setSearchParams('highSalary', config.salary[1]);
+            } else {
+                setSearchParams('salary', config.salary);
+            }
             searchParams.set('page', page);
             if (isModify) {
                 window.location.search = searchParams.toString();
@@ -629,29 +699,46 @@ var AutoJob = (function () {
             if (page > 30) return
 
             const cities = await monitorElementsGeneration('.system-search-condition .expect-list > .expect-item');
-            const city = Array.from(cities).find(city => city.innerText.includes(config.recommendConfig.city));
+            const city = Array.from(cities).find(city => city.innerText.includes(config.city));
             if (!city) return
 
             city.click();
 
             const jobTabs = await monitorElementsGeneration('.user-jobs-area .job-tab > span');
-            Array.from(jobTabs).find(tab => tab.innerText === (config.recommendConfig.isNew ? '最新职位' : '精选职位')).click();
-            
-            const oldExperience = searchParams.get('experience');
-            if (oldExperience == null || oldExperience.toString() !== config.experience.toString()) {
-                const newUrl = new URL(window.location.href);
-                const { searchParams: newSearchParams } = newUrl;
-                searchParams.set('experience', config.experience);
-                searchParams.set('expectId', newSearchParams.get('expectId'));
-                searchParams.set('sortType', newSearchParams.get('sortType'));
+            Array.from(jobTabs).find(tab => tab.innerText === (config.mode === 2 ? '最新职位' : '精选职位')).click();
+
+            let isModify = false;
+            setSearchParams('scale', config.scale);
+            setSearchParams('degree', config.degree);
+            setSearchParams('experience', config.experience);
+            const newUrl = new URL(window.location.href);
+            const { searchParams: newSearchParams } = newUrl;
+            searchParams.set('expectId', newSearchParams.get('expectId'));
+            searchParams.set('sortType', newSearchParams.get('sortType'));
+            if (Array.isArray(config.salary) && config.salary.length) {
+                setSearchParams('salary', -40001);
+                setSearchParams('lowSalary', config.salary[0]);
+                setSearchParams('highSalary', config.salary[1]);
+            } else {
+                setSearchParams('salary', config.salary);
+            }
+            if (isModify) {
                 window.location.search = searchParams.toString();
                 return
             }
 
-            // await this._traverse()
+            await this._traverse();
 
-            // searchParams.set('page', page + 1)
-            // window.location.search = searchParams.toString()
+            searchParams.set('page', page + 1);
+            window.location.search = searchParams.toString();
+
+            function setSearchParams(key, value) {
+                const oldValue = searchParams.get(key);
+                if (oldValue == null || oldValue.toString() !== value.toString()) {
+                    searchParams.set(key, value);
+                    isModify = true;
+                }
+            }
         }
 
         /**
@@ -664,12 +751,16 @@ var AutoJob = (function () {
                 .filter(dom => {
                     const isfriend = dom.querySelector('.job-card-left > .job-info > .start-chat-btn');
                     const name = dom.querySelector('.job-card-right .company-name > a');
-                    const keyword = config.recommendConfig?.keyword ?? config.searchConfig.keyword;
                     const jobName = dom.querySelector('.job-card-left .job-name');
+                    // 过滤已沟通的职位
                     return isfriend.innerText === '立即沟通' &&
+                        // 排除的公司
                         !config.excludes.some(exclude => name.innerText.includes(exclude)) &&
+                        // 是否接受外地职位
                         (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place')) &&
-                        jobName.innerText.includes(keyword) &&
+                        // 职位名称匹配
+                        jobName.innerText.includes(config.keyword) &&
+                        // 职位名称排除关键词
                         !config.excludeKeywords.find(keyword => jobName.innerText.includes(keyword))
                 })
                 .map(dom => {

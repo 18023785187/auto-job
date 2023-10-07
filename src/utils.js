@@ -14,6 +14,19 @@ export async function monitorElementGeneration(selector) {
     })
 }
 
+export async function monitorElementsGeneration(selector) {
+    return new Promise(resolve => {
+        let el
+        let timer = setInterval(() => {
+            el = document.querySelectorAll(selector)
+            if(el.length) {
+                resolve(el)
+                clearInterval(timer)
+            }
+        }, 100)
+    })
+}
+
 /**
  * 输入最大和最小正整数，在该范围内取随机数
  * @param {*} min 
@@ -24,4 +37,8 @@ export function random(min, max) {
     return (
         min + (Math.random() * (max - min))
     )
+}
+
+export function isObj(target) {
+    return Object.prototype.toString.call(target) === '[object Object]'
 }

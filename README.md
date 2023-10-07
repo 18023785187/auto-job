@@ -2,6 +2,8 @@
 
 boss直聘自动打招呼油猴脚本
 
+支持以搜索框或推荐职位作为打招呼入口
+
 #### 使用
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/)

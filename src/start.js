@@ -25,6 +25,9 @@ export default class AutoJob {
             newConfig.searchConfig = config.searchConfig
         }
         if (isObj(config.recommendConfig)) {
+            if (typeof config.searchConfig.keyword !== 'string') {
+                throw new TypeError('recommendConfig.keyword 类型必须是 string')
+            }
             if (typeof config.recommendConfig.city !== 'string') {
                 throw new TypeError('recommendConfig.city 类型必须是 string')
             }
@@ -34,6 +37,7 @@ export default class AutoJob {
             newConfig.recommendConfig = config.recommendConfig
         }
         newConfig.otherPlace = !!config.otherPlace
+        newConfig.excludeKeywords = Array.isArray(config.excludeKeywords) ? config.excludeKeywords : []
         newConfig.experience = Array.isArray(config.experience) ? config.experience : []
         newConfig.liveness = Array.isArray(config.liveness) ? config.liveness : []
         newConfig.excludes = Array.isArray(config.excludes) ? config.excludes : []
@@ -190,9 +194,13 @@ export default class AutoJob {
             .filter(dom => {
                 const isfriend = dom.querySelector('.job-card-left > .job-info > .start-chat-btn')
                 const name = dom.querySelector('.job-card-right .company-name > a')
+                const keyword = config.recommendConfig?.keyword ?? config.searchConfig.keyword
+                const jobName = dom.querySelector('.job-card-left .job-name')
                 return isfriend.innerText === '立即沟通' &&
                     !config.excludes.some(exclude => name.innerText.includes(exclude)) &&
-                    (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place'))
+                    (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place')) &&
+                    jobName.innerText.includes(keyword) &&
+                    !config.excludeKeywords.find(keyword => jobName.innerText.includes(keyword))
             })
             .map(dom => {
                 return () => new Promise(resolve => {

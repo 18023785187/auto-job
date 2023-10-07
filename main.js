@@ -20,12 +20,14 @@ const config = {
     recommendConfig: {
         city: '深圳', // 目标城市，在求职意向中设置，如果没有求职意向中没有目标城市将不会自动打招呼
         isNew: true, // true 为最新职位，false 为精选职位
+        keyword: '前端', // 匹配职位名称，只有匹配中才会打招呼，比如推荐职位为 '后端工程师' 会跳过
     },
     // 搜索框配置，如果值不是对象将关闭通过搜索框搜索职位打招呼功能
     searchConfig: {
         city: '深圳', // 目标城市
         keyword: '前端', // 职位关键词
     },
+    excludeKeywords: ['高级', '资深'], // 职位名称要排除的关键字，比如 '高级前端工程师' 将会比排除在外
     otherPlace: false, // 是否接受外地职位
     /**
      * 工作年限，可多选
@@ -493,6 +495,9 @@ var AutoJob = (function () {
                 newConfig.searchConfig = config.searchConfig;
             }
             if (isObj(config.recommendConfig)) {
+                if (typeof config.searchConfig.keyword !== 'string') {
+                    throw new TypeError('recommendConfig.keyword 类型必须是 string')
+                }
                 if (typeof config.recommendConfig.city !== 'string') {
                     throw new TypeError('recommendConfig.city 类型必须是 string')
                 }
@@ -502,6 +507,7 @@ var AutoJob = (function () {
                 newConfig.recommendConfig = config.recommendConfig;
             }
             newConfig.otherPlace = !!config.otherPlace;
+            newConfig.excludeKeywords = Array.isArray(config.excludeKeywords) ? config.excludeKeywords : [];
             newConfig.experience = Array.isArray(config.experience) ? config.experience : [];
             newConfig.liveness = Array.isArray(config.liveness) ? config.liveness : [];
             newConfig.excludes = Array.isArray(config.excludes) ? config.excludes : [];
@@ -642,10 +648,10 @@ var AutoJob = (function () {
                 return
             }
 
-            await this._traverse()
+            // await this._traverse()
 
-            searchParams.set('page', page + 1)
-            window.location.search = searchParams.toString()
+            // searchParams.set('page', page + 1)
+            // window.location.search = searchParams.toString()
         }
 
         /**
@@ -658,9 +664,13 @@ var AutoJob = (function () {
                 .filter(dom => {
                     const isfriend = dom.querySelector('.job-card-left > .job-info > .start-chat-btn');
                     const name = dom.querySelector('.job-card-right .company-name > a');
+                    const keyword = config.recommendConfig?.keyword ?? config.searchConfig.keyword;
+                    const jobName = dom.querySelector('.job-card-left .job-name');
                     return isfriend.innerText === '立即沟通' &&
                         !config.excludes.some(exclude => name.innerText.includes(exclude)) &&
-                        (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place'))
+                        (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place')) &&
+                        jobName.innerText.includes(keyword) &&
+                        !config.excludeKeywords.find(keyword => jobName.innerText.includes(keyword))
                 })
                 .map(dom => {
                     return () => new Promise(resolve => {

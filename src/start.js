@@ -50,11 +50,11 @@ export default class AutoJob {
         } else if (window.location.pathname === '/web/geek/recommend') { // 推荐职位的 jobs
             this._traverseRecommend()
         }
-        //  else if (window.location.pathname.indexOf('/job_detail') === 0) { // 详情页
-        //     this._checkValidJob()
-        // } else if (window.location.pathname === '/web/geek/chat') { // 聊天页
-        //     this._sayHello()
-        // } 
+        else if (window.location.pathname.indexOf('/job_detail') === 0) { // 详情页
+            this._checkValidJob()
+        } else if (window.location.pathname === '/web/geek/chat') { // 聊天页
+            this._sayHello()
+        } 
         else {
             this._toJobs()
         }

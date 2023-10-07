@@ -38,7 +38,3 @@ export function random(min, max) {
         min + (Math.random() * (max - min))
     )
 }
-
-export function isObj(target) {
-    return Object.prototype.toString.call(target) === '[object Object]'
-}

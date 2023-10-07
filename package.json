@@ -1,19 +1,21 @@
 {
   "name": "auto-job",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "boss直聘自动打招呼油猴脚本",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "write:docs": "node scripts/writeDocs.js",
     "dev": "rollup -c -w",
+    "prebuild": "npm run write:docs",
     "build": "rollup -c"
   },
   "keywords": [
     "auto",
     "job"
   ],
-  "author": "hym",
-  "license": "ISC",
+  "author": "hym20000418",
+  "license": "MIT",
   "homepage": "https://github.com/18023785187/auto-job",
   "engines": {
     "node": ">=18.16.0",

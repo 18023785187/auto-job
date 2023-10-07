@@ -622,13 +622,6 @@ var AutoJob = (function () {
             // 限制最多 30 页
             if (page > 30) return
 
-            const oldExperience = searchParams.get('experience');
-            if (oldExperience == null || oldExperience.toString() !== config.experience.toString()) {
-                searchParams.set('experience', config.experience);
-                window.location.search = searchParams.toString();
-                return
-            }
-
             const cities = await monitorElementsGeneration('.system-search-condition .expect-list > .expect-item');
             const city = Array.from(cities).find(city => city.innerText.includes(config.recommendConfig.city));
             if (!city) return
@@ -637,11 +630,22 @@ var AutoJob = (function () {
 
             const jobTabs = await monitorElementsGeneration('.user-jobs-area .job-tab > span');
             Array.from(jobTabs).find(tab => tab.innerText === (config.recommendConfig.isNew ? '最新职位' : '精选职位')).click();
+            
+            const oldExperience = searchParams.get('experience');
+            if (oldExperience == null || oldExperience.toString() !== config.experience.toString()) {
+                const newUrl = new URL(window.location.href);
+                const { searchParams: newSearchParams } = newUrl;
+                searchParams.set('experience', config.experience);
+                searchParams.set('expectId', newSearchParams.get('expectId'));
+                searchParams.set('sortType', newSearchParams.get('sortType'));
+                window.location.search = searchParams.toString();
+                return
+            }
 
-            await this._traverse();
+            await this._traverse()
 
-            searchParams.set('page', page + 1);
-            window.location.search = searchParams.toString();
+            searchParams.set('page', page + 1)
+            window.location.search = searchParams.toString()
         }
 
         /**

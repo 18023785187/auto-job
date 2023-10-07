@@ -12,10 +12,21 @@
 
 /*
     修改该配置即可限定打招呼对象
+
+    搜索框和推荐不能同时执行，如果两个都配置那么只执行推荐职位
 */
 const config = {
-    city: '深圳', // 目标城市
-    keyword: '前端', // 职位关键词
+    // 推荐职位配置，如果值不是对象将关闭通过推荐职位打招
+    recommendConfig: {
+        city: '深圳', // 目标城市，在求职意向中设置，如果没有求职意向中没有目标城市将不会自动打招呼
+        isNew: true, // true 为最新职位，false 为精选职位
+    },
+    // 搜索框配置，如果值不是对象将关闭通过搜索框搜索职位打招呼功能
+    searchConfig: {
+        city: '深圳', // 目标城市
+        keyword: '前端', // 职位关键词
+    },
+    otherPlace: false, // 是否接受外地职位
     /**
      * 工作年限，可多选
      * 经验不限     101
@@ -54,6 +65,19 @@ var AutoJob = (function () {
         })
     }
 
+    async function monitorElementsGeneration(selector) {
+        return new Promise(resolve => {
+            let el;
+            let timer = setInterval(() => {
+                el = document.querySelectorAll(selector);
+                if(el.length) {
+                    resolve(el);
+                    clearInterval(timer);
+                }
+            }, 100);
+        })
+    }
+
     /**
      * 输入最大和最小正整数，在该范围内取随机数
      * @param {*} min 
@@ -64,6 +88,10 @@ var AutoJob = (function () {
         return (
             min + (Math.random() * (max - min))
         )
+    }
+
+    function isObj(target) {
+        return Object.prototype.toString.call(target) === '[object Object]'
     }
 
     const cityCodeMap = {
@@ -449,20 +477,31 @@ var AutoJob = (function () {
         _formatConfig(config) {
             const newConfig = {};
 
-            if (typeof config.city !== 'string') {
-                throw new TypeError('city 类型必须是 string')
-            }
-            if (typeof config.keyword !== 'string') {
-                throw new TypeError('keyword 类型必须是 string')
-            }
             if (typeof config.message !== 'string') {
                 throw new TypeError('message 类型必须是 string')
             }
             if (!config.message.length) {
                 throw new TypeError('message 不能为空')
             }
-            newConfig.city = config.city;
-            newConfig.keyword = config.keyword;
+            if (isObj(config.searchConfig)) {
+                if (typeof config.searchConfig.city !== 'string') {
+                    throw new TypeError('searchConfig.city 类型必须是 string')
+                }
+                if (typeof config.searchConfig.keyword !== 'string') {
+                    throw new TypeError('searchConfig.keyword 类型必须是 string')
+                }
+                newConfig.searchConfig = config.searchConfig;
+            }
+            if (isObj(config.recommendConfig)) {
+                if (typeof config.recommendConfig.city !== 'string') {
+                    throw new TypeError('recommendConfig.city 类型必须是 string')
+                }
+                if (typeof config.recommendConfig.isNew !== 'boolean') {
+                    throw new TypeError('recommendConfig.isNew 类型必须是 boolean')
+                }
+                newConfig.recommendConfig = config.recommendConfig;
+            }
+            newConfig.otherPlace = !!config.otherPlace;
             newConfig.experience = Array.isArray(config.experience) ? config.experience : [];
             newConfig.liveness = Array.isArray(config.liveness) ? config.liveness : [];
             newConfig.excludes = Array.isArray(config.excludes) ? config.excludes : [];
@@ -474,39 +513,57 @@ var AutoJob = (function () {
         }
 
         start() {
-            if (window.location.pathname === '/web/geek/job') {
+            if (window.location.pathname === '/web/geek/job') { // 通过搜索框打开的 jobs
                 this._traverseJob();
-            } else if (window.location.pathname.indexOf('/job_detail') === 0) {
-                this._checkValidJob();
-            } else if (window.location.pathname === '/web/geek/chat') {
-                this._sayHello();
-            } else {
+            } else if (window.location.pathname === '/web/geek/recommend') { // 推荐职位的 jobs
+                this._traverseRecommend();
+            }
+            //  else if (window.location.pathname.indexOf('/job_detail') === 0) { // 详情页
+            //     this._checkValidJob()
+            // } else if (window.location.pathname === '/web/geek/chat') { // 聊天页
+            //     this._sayHello()
+            // } 
+            else {
                 this._toJobs();
             }
         }
 
         /**
-         * 在首页时自动搜索关键字，并跳转到职位列表
+         * 首页操作
+         * 1、打开推荐职位
+         * 2、选择城市并所搜职位关键词
          */
         async _toJobs() {
             const { config } = this;
-            // 选择城市
-            const nav = document.querySelector('.nav-city-box');
-            const selected = nav.querySelector('.nav-city-selected');
-            if (selected.innerText === config.city) return
-            nav.click();
-            const section = await monitorElementGeneration('.city-group-section');
-            const citys = section.querySelectorAll('a');
-            const targetCity = Array.from(citys).find(city => city.innerText === config.city);
-            if (window.location.pathname !== targetCity.pathname) {
-                targetCity.click();
+
+            // 打开推荐职位
+            if (config.recommendConfig) {
+                const recommend = await monitorElementGeneration('.merge-city-job-recommend');
+                const moreBtn = recommend.querySelector('.common-tab-more > a');
+                moreBtn.click();
             }
-            // 填写职位关键词
-            const form = document.querySelector('.search-form');
-            const search = form.querySelector('.search-form-con > .ipt-wrap > input');
-            search.value = config.keyword;
-            const button = form.querySelector('.btn-search');
-            button.click();
+
+            // 选择城市并所搜职位关键词
+            else if (config.searchConfig) {
+                const nav = document.querySelector('.nav-city-box');
+                const selected = nav.querySelector('.nav-city-selected');
+                if (selected.innerText !== config.searchConfig.city) {
+                    nav.click();
+                    const section = await monitorElementGeneration('.city-group-section');
+                    const citys = section.querySelectorAll('a');
+                    const targetCity = Array.from(citys).find(city => city.innerText === config.searchConfig.city);
+                    if (window.location.pathname !== targetCity.pathname) {
+                        targetCity.click();
+                    }
+                    return
+                }
+                // 填写职位关键词
+                const form = document.querySelector('.search-form');
+                const search = form.querySelector('.search-form-con > .ipt-wrap > input');
+                search.value = config.searchConfig.keyword;
+                const button = form.querySelector('.btn-search');
+                button.click();
+            }
         }
 
         /**
@@ -518,7 +575,7 @@ var AutoJob = (function () {
             const url = new URL(window.location.href);
             const { searchParams } = url;
 
-            if(!searchParams.has('page')) {
+            if (!searchParams.has('page')) {
                 searchParams.append('page', 1);
             }
             const page = ~~searchParams.get('page');
@@ -526,8 +583,8 @@ var AutoJob = (function () {
             if (page > 10) return
 
             let isModify = false;
-            setSearchParams('city', cityCodeMap[config.city]);
-            setSearchParams('query', config.keyword);
+            setSearchParams('city', cityCodeMap[config.searchConfig.city]);
+            setSearchParams('query', config.searchConfig.keyword);
             setSearchParams('experience', config.experience);
             searchParams.set('page', page);
             if (isModify) {
@@ -535,32 +592,10 @@ var AutoJob = (function () {
                 return
             }
 
-            await monitorElementGeneration('.job-card-wrapper');
-            await toDetails();
+            await this._traverse();
 
-            async function toDetails() {
-                const handlers = Array.from(document.querySelectorAll('.job-list-box > li'))
-                    .filter(dom => {
-                        const isfriend = dom.querySelector('.job-card-left>.job-info>.start-chat-btn');
-                        const name = dom.querySelector('.job-card-right .company-name>a');
-                        return isfriend.innerText === '立即沟通' && !config.excludes.some(exclude => name.innerText.includes(exclude))
-                    })
-                    .map(dom => {
-                        return () => new Promise(resolve => {
-                            setTimeout(() => {
-                                dom.click();
-                                resolve();
-                            }, random(config.min, config.max));
-                        })
-                    });
-
-                for (const handler of handlers) {
-                    await handler();
-                }
-
-                searchParams.set('page', page + 1);
-                window.location.search = searchParams.toString();
-            }
+            searchParams.set('page', page + 1);
+            window.location.search = searchParams.toString();
 
             function setSearchParams(key, value) {
                 const oldValue = searchParams.get(key);
@@ -568,6 +603,72 @@ var AutoJob = (function () {
                     searchParams.set(key, value);
                     isModify = true;
                 }
+            }
+        }
+
+        /**
+         * 修正获取的 jobs 并逐个访问
+         */
+        async _traverseRecommend() {
+            const { config } = this;
+
+            const url = new URL(window.location.href);
+            const { searchParams } = url;
+
+            if (!searchParams.has('page')) {
+                searchParams.append('page', 1);
+            }
+            const page = ~~searchParams.get('page');
+            // 限制最多 30 页
+            if (page > 30) return
+
+            const oldExperience = searchParams.get('experience');
+            if (oldExperience == null || oldExperience.toString() !== config.experience.toString()) {
+                searchParams.set('experience', config.experience);
+                window.location.search = searchParams.toString();
+                return
+            }
+
+            const cities = await monitorElementsGeneration('.system-search-condition .expect-list > .expect-item');
+            const city = Array.from(cities).find(city => city.innerText.includes(config.recommendConfig.city));
+            if (!city) return
+
+            city.click();
+
+            const jobTabs = await monitorElementsGeneration('.user-jobs-area .job-tab > span');
+            Array.from(jobTabs).find(tab => tab.innerText === (config.recommendConfig.isNew ? '最新职位' : '精选职位')).click();
+
+            await this._traverse();
+
+            searchParams.set('page', page + 1);
+            window.location.search = searchParams.toString();
+        }
+
+        /**
+         * 遍历 jobs
+         */
+        async _traverse() {
+            const { config } = this;
+            const box = await monitorElementGeneration('.job-list-box');
+            const handlers = Array.from(box.querySelectorAll('.job-card-wrapper'))
+                .filter(dom => {
+                    const isfriend = dom.querySelector('.job-card-left > .job-info > .start-chat-btn');
+                    const name = dom.querySelector('.job-card-right .company-name > a');
+                    return isfriend.innerText === '立即沟通' &&
+                        !config.excludes.some(exclude => name.innerText.includes(exclude)) &&
+                        (config.otherPlace || !dom.querySelector('.job-card-left > .icon-other-place'))
+                })
+                .map(dom => {
+                    return () => new Promise(resolve => {
+                        setTimeout(() => {
+                            dom.click();
+                            resolve();
+                        }, random(config.min, config.max));
+                    })
+                });
+
+            for (const handler of handlers) {
+                await handler();
             }
         }
 
@@ -621,7 +722,7 @@ var AutoJob = (function () {
             inputEv.simulated = true;
             input.innerText = config.message;
             input.dispatchEvent(inputEv);
-            
+
             setTimeout(() => {
                 send.click();
 
@@ -632,7 +733,7 @@ var AutoJob = (function () {
         _close() {
             setTimeout(() => {
                 window.close();
-            }, 8000);
+            }, 3000);
         }
     }
 

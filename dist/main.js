@@ -21,8 +21,10 @@ const config = {
      * 2 为以 推荐职位——最新职位 作为职位入口
      * 
      * 设置三个入口是原因三个入口的职位都不太一样，避免漏了一些职位可以尝试切换入口
+     * 
+     * 目前 1, 2 已不可用，后续有时间修复
      */
-    mode: 2,
+    mode: 0,
     /**
      * 目标城市,
      * mode 为 1 或 2 时需要事先设置求职意向为目标城市，否则不生效
@@ -59,7 +61,8 @@ const config = {
      */
     max: 6,
     /**
-     * 打招呼语
+     * 打招呼语，类型为 string | Array<string>
+     * 如果是数组类型将会逐条发送
      */
     message: '您好，我正在找前端开发的工作，希望有机会与贵司进一步交流',
     /**
@@ -545,8 +548,8 @@ var AutoJob = (function () {
             if (typeof config.keyword !== 'string') {
                 throw new TypeError('keyword 类型必须是 string')
             }
-            if (typeof config.message !== 'string') {
-                throw new TypeError('message 类型必须是 string')
+            if (typeof config.message !== 'string' && !Array.isArray(config.message)) {
+                throw new TypeError('message 类型必须是 string 或 array')
             }
             if (!config.message.length) {
                 throw new TypeError('message 不能为空')
@@ -799,14 +802,29 @@ var AutoJob = (function () {
             const send = message.querySelector('.send-message');
             const inputEv = new Event('input', { bubbles: true });
             inputEv.simulated = true;
-            input.value = config.message;
-            input.dispatchEvent(inputEv);
+            let count = 0;
+            let second = 1000;
+            if (Array.isArray(config.message)) {
+                config.message.forEach((msg, i) => {
+                    count++;
+                    setTimeout(() => {
+                        sendMsg(msg);
+                    }, (i + 1) * second);
+                });
+            } else {
+                count++;
+                sendMsg(config.message);
+            }
 
-            setTimeout(() => {
-                send.click();
+            setTimeout(() => this._close(), count * second);
 
-                this._close();
-            }, 1000);
+            function sendMsg(msg) {
+                input.innerText = msg;
+                input.dispatchEvent(inputEv);
+                setTimeout(() => {
+                    send.click();
+                }, second / 2);
+            }
         }
 
         /**
@@ -825,14 +843,29 @@ var AutoJob = (function () {
             const send = controls.querySelector('.chat-editor .btn-send');
             const inputEv = new Event('input', { bubbles: true });
             inputEv.simulated = true;
-            input.innerText = config.message;
-            input.dispatchEvent(inputEv);
+            let count = 0;
+            let second = 1000;
+            if (Array.isArray(config.message)) {
+                config.message.forEach((msg, i) => {
+                    count++;
+                    setTimeout(() => {
+                        sendMsg(msg);
+                    }, (i + 1) * second);
+                });
+            } else {
+                count++;
+                sendMsg(config.message);
+            }
 
-            setTimeout(() => {
-                send.click();
+            setTimeout(() => this._close(), count * second);
 
-                this._close();
-            }, 1000);
+            function sendMsg(msg) {
+                input.innerText = msg;
+                input.dispatchEvent(inputEv);
+                setTimeout(() => {
+                    send.click();
+                }, second / 2);
+            }
         }
 
         _close() {

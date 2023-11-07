@@ -18,8 +18,8 @@ export default class AutoJob {
         if (typeof config.keyword !== 'string') {
             throw new TypeError('keyword 类型必须是 string')
         }
-        if (typeof config.message !== 'string') {
-            throw new TypeError('message 类型必须是 string')
+        if (typeof config.message !== 'string' && !Array.isArray(config.message)) {
+            throw new TypeError('message 类型必须是 string 或 array')
         }
         if (!config.message.length) {
             throw new TypeError('message 不能为空')
@@ -272,14 +272,29 @@ export default class AutoJob {
         const send = message.querySelector('.send-message')
         const inputEv = new Event('input', { bubbles: true })
         inputEv.simulated = true
-        input.value = config.message
-        input.dispatchEvent(inputEv)
+        let count = 0
+        let second = 1000
+        if (Array.isArray(config.message)) {
+            config.message.forEach((msg, i) => {
+                count++
+                setTimeout(() => {
+                    sendMsg(msg)
+                }, (i + 1) * second)
+            })
+        } else {
+            count++
+            sendMsg(config.message)
+        }
 
-        setTimeout(() => {
-            send.click()
+        setTimeout(() => this._close(), count * second)
 
-            this._close()
-        }, 1000)
+        function sendMsg(msg) {
+            input.innerText = msg
+            input.dispatchEvent(inputEv)
+            setTimeout(() => {
+                send.click()
+            }, second / 2)
+        }
     }
 
     /**
@@ -298,14 +313,29 @@ export default class AutoJob {
         const send = controls.querySelector('.chat-editor .btn-send')
         const inputEv = new Event('input', { bubbles: true })
         inputEv.simulated = true
-        input.innerText = config.message
-        input.dispatchEvent(inputEv)
+        let count = 0
+        let second = 1000
+        if (Array.isArray(config.message)) {
+            config.message.forEach((msg, i) => {
+                count++
+                setTimeout(() => {
+                    sendMsg(msg)
+                }, (i + 1) * second)
+            })
+        } else {
+            count++
+            sendMsg(config.message)
+        }
 
-        setTimeout(() => {
-            send.click()
+        setTimeout(() => this._close(), count * second)
 
-            this._close()
-        }, 1000)
+        function sendMsg(msg) {
+            input.innerText = msg
+            input.dispatchEvent(inputEv)
+            setTimeout(() => {
+                send.click()
+            }, second / 2)
+        }
     }
 
     _close() {
